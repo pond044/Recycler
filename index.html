@@ -95,14 +95,15 @@
         async function sendDataToSheet(predictionResult) {
             console.log("Sending data to Google Sheet:", predictionResult);
             
-            try {
-                const response = await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ prediction: predictionResult }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+           try {
+    const response = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: predictionResult, // 👈 ส่งเป็นข้อความธรรมดา
+        headers: {
+            'Content-Type': 'text/plain' // 👈 เปลี่ยนเป็น text/plain
+        }
+    });
+//...
                 
                 const result = await response.json();
                 
