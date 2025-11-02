@@ -32,15 +32,14 @@
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQglYwHrPrPraYrjCv5q5iUazrpWGV6_BPyCwcn8vDrvXJbBx022I6Mm5FkD8gfx_mVQ/exec";
         
         // -----------------------------------------------------------------
-        // 📌 3. ตั้งค่าการบันทึก (แก้ไขกลับเป็นแบบที่ถูกต้อง)
+        // 📌 3. ตั้งค่าการบันทึก (ถูกต้อง)
         // -----------------------------------------------------------------
-        const TARGET_CLASS = "Class 1"; // 👈 เปลี่ยนเป็นชื่อ Class ที่คุณต้องการให้บันทึก
-        const CONFIDENCE_THRESHOLD = 0.95; // 👈 ความมั่นใจที่ต้องการ (เช่น 0.95 = 95%)
-        const SEND_DELAY = 5000; // 👈 หน่วงเวลา 5 วินาที (5000ms)
+        const CONFIDENCE_THRESHOLD = 0.95; // ความมั่นใจ 95%
+        const SEND_DELAY = 5000; // หน่วงเวลา 5 วินาที
         // -----------------------------------------------------------------
 
         let model, webcam, labelContainer, maxPredictions;
-        let isSending = false; // ตัวแปรป้องกันการส่งข้อมูลซ้ำซ้อน
+        let isSending = false; 
 
         // ฟังก์ชันเริ่มต้น (โหลดโมเดลและเปิดกล้อง)
         async function init() {
@@ -50,8 +49,8 @@
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            webcam = new tmImage.Webcam(200, 200, true); // true = กลับด้านกล้อง
-            await webcam.setup(); // ขออนุญาตเปิดกล้อง
+            webcam = new tmImage.Webcam(200, 200, true); 
+            await webcam.setup(); 
             await webcam.play();
             window.requestAnimationFrame(loop);
 
@@ -64,12 +63,12 @@
 
         // Loop หลัก ทำงานตลอดเวลา
         async function loop() {
-            webcam.update(); // อัปเดตเฟรมจากกล้อง
-            await predict(); // ทำนายผล
+            webcam.update(); 
+            await predict();
             window.requestAnimationFrame(loop);
         }
 
-        // ฟังก์ชันทำนายผลจากภาพ
+        // ฟังก์ชันทำนายผลจากภาพ (แก้ไขให้บันทึกทั้ง Class 1 และ 2)
         async function predict() {
             const prediction = await model.predict(webcam.canvas);
             for (let i = 0; i < maxPredictions; i++) {
@@ -77,32 +76,33 @@
                     prediction[i].className + ": " + prediction[i].probability.toFixed(2);
                 labelContainer.childNodes[i].innerHTML = classPrediction;
 
-                // === ส่วนสำคัญ: ตรวจสอบและส่งข้อมูล ===
-                // (นี่คือโค้ดที่ถูกต้อง ซึ่งใช้ตัวแปรจากส่วนที่ 3)
-              //... ข้างในฟังก์ชัน predict()
+                // === ส่วนสำคัญ: ตรวจสอบและส่งข้อมูล (เวอร์ชันที่ถูกต้อง) ===
+                const className = prediction[i].className;
+                const probability = prediction[i].probability;
+
                 if (
-                    (prediction[i].className === "Class 1" || prediction[i].className === "Class 2") &&
-                    prediction[i].probability > CONFIDENCE_THRESHOLD &&
+                    (className === "Class 1" || className === "Class 2") && // 👈 ตรวจสอบทั้ง 2 Class
+                    probability > CONFIDENCE_THRESHOLD &&
                     !isSending
                 ) {
-                    isSending = true;
-                    sendDataToSheet(prediction[i].className); // 👈 ✅ แก้ไขเป็นแบบนี้
+                    isSending = true; 
+                    sendDataToSheet(className); // 👈 ส่งชื่อ Class ที่ตรวจจับได้
                 }
-//...
+            }
+        } // 👈 🚨 นี่คือ '}' ที่มักจะหายไป
 
-        // === ฟังก์ชันใหม่: ส่งข้อมูลไป Google Sheet ===
+        // === ฟังก์ชันส่งข้อมูล (เวอร์ชัน text/plain ที่ถูกต้อง) ===
         async function sendDataToSheet(predictionResult) {
             console.log("Sending data to Google Sheet:", predictionResult);
             
-           try {
-    const response = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: predictionResult, // 👈 ส่งเป็นข้อความธรรมดา
-        headers: {
-            'Content-Type': 'text/plain' // 👈 เปลี่ยนเป็น text/plain
-        }
-    });
-//...
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: predictionResult, // 👈 ส่งเป็น text/plain
+                    headers: {
+                        'Content-Type': 'text/plain' // 👈 ใช้ Content-Type นี้
+                    }
+                });
                 
                 const result = await response.json();
                 
@@ -116,13 +116,11 @@
                 console.error("Fetch error:", error);
             }
 
-            // หลังจากส่งเสร็จ (ไม่ว่าจะสำเร็จหรือล้มเหลว)
-            // ให้รอ 5 วินาที ก่อนที่จะอนุญาตให้ส่งใหม่
             setTimeout(() => {
                 isSending = false;
                 console.log("Ready to send again.");
             }, SEND_DELAY);
-        }
+        } // 👈 🚨 หรือ '}' ตัวนี้ที่มักจะหายไป
     </script>
 </body>
 </html>
