@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Web App</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        #webcam-container { margin-top: 10px; border: 2px solid #ccc; }
+        #label-container { margin-top: 10px; font-size: 1.2em; font-weight: bold; }
+        button { font-size: 1em; padding: 10px 15px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>My AI Web App</h1>
+    <button type="button" onclick="init()">Start Camera</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+    <script type="text/javascript">
+        // -----------------------------------------------------------------
+        // 📌 1. ใส่ลิงก์โมเดล AI ของคุณ (จาก Teachable Machine)
+        // -----------------------------------------------------------------
+        const URL = "https://teachablemachine.withgoogle.com/models/dMIik5uqa/";
+
+        // -----------------------------------------------------------------
+        // 📌 2. ใส่ลิงก์ GOOGLE APPS SCRIPT (Web app URL จากส่วนที่ 1)
+        // -----------------------------------------------------------------
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-C7i5IpqW5pYH6VsdsZcBy8qMwHrjl0X5FTg2a-Im015HNsJTsz8EiwEhWojczNzPlA/exec";
+
+        // -----------------------------------------------------------------
+        // 📌 3. ตั้งค่าการบันทึก
+        // -----------------------------------------------------------------
+        const TARGET_CLASS = "Class 1"; // 👈 เปลี่ยนเป็นชื่อ Class ที่คุณต้องการให้บันทึก
+        const CONFIDENCE_THRESHOLD = 0.95; // 👈 ความมั่นใจที่ต้องการ (เช่น 0.95 = 95%)
+        const SEND_DELAY = 5000; // 👈 หน่วงเวลา 5 วินาที (5000ms) ก่อนบันทึกซ้ำ
+        // -----------------------------------------------------------------
+
+        let model, webcam, labelContainer, maxPredictions;
+        let isSending = false; // ตัวแปรป้องกันการส่งข้อมูลซ้ำซ้อน
+
+        // ฟังก์ชันเริ่มต้น (โหลดโมเดลและเปิดกล้อง)
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            webcam = new tmImage.Webcam(200, 200, true); // true = กลับด้านกล้อง
+            await webcam.setup(); // ขออนุญาตเปิดกล้อง
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        // Loop หลัก ทำงานตลอดเวลา
+        async function loop() {
+            webcam.update(); // อัปเดตเฟรมจากกล้อง
+            await predict(); // ทำนายผล
+            window.requestAnimationFrame(loop);
+        }
+
+        // ฟังก์ชันทำนายผลจากภาพ
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+
+                // === ส่วนสำคัญ: ตรวจสอบและส่งข้อมูล ===
+                if (
+                    prediction[i].className === TARGET_CLASS &&
+                    prediction[i].probability > CONFIDENCE_THRESHOLD &&
+                    !isSending // ตรวจสอบว่าไม่ได้กำลังส่งข้อมูลอยู่
+                ) {
+                    // ถ้าเจอ Class ที่ต้องการ และมั่นใจพอ และยังไม่ได้ส่ง
+                    isSending = true; // ล็อกการส่ง
+                    sendDataToSheet(prediction[i].className);
+                }
+            }
+        }
+
+        // === ฟังก์ชันใหม่: ส่งข้อมูลไป Google Sheet ===
+        async function sendDataToSheet(predictionResult) {
+            console.log("Sending data to Google Sheet:", predictionResult);
+
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ prediction: predictionResult }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.result === "success") {
+                    console.log("Data sent successfully!");
+                } else {
+                    console.error("Error sending data:", result.message);
+                }
+
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
+
+            // หลังจากส่งเสร็จ (ไม่ว่าจะสำเร็จหรือล้มเหลว)
+            // ให้รอ 5 วินาที ก่อนที่จะอนุญาตให้ส่งใหม่
+            setTimeout(() => {
+                isSending = false;
+                console.log("Ready to send again.");
+            }, SEND_DELAY);
+        }
+    </script>
+</body>
+</html>
