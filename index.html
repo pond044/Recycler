@@ -22,29 +22,21 @@
 
     <script type="text/javascript">
         // -----------------------------------------------------------------
-        // 📌 1. ใส่ลิงก์โมเดล AI ของคุณ (จาก Teachable Machine)
+        // 📌 1. ลิงก์โมเดล AI ของคุณ (ถูกต้อง)
         // -----------------------------------------------------------------
         const URL = "https://teachablemachine.withgoogle.com/models/dMIik5uqa/";
 
         // -----------------------------------------------------------------
-        // 📌 2. ใส่ลิงก์ GOOGLE APPS SCRIPT (Web app URL จากส่วนที่ 1)
+        // 📌 2. ลิงก์ GOOGLE APPS SCRIPT "ใหม่" ของคุณ (ถูกต้อง)
         // -----------------------------------------------------------------
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQglYwHrPrPraYrjCv5q5iUazrpWGV6_BPyCwcn8vDrvXJbBx022I6Mm5FkD8gfx_mVQ/exec";
-
+        
         // -----------------------------------------------------------------
-        // 📌 3. ตั้งค่าการบันทึก
+        // 📌 3. ตั้งค่าการบันทึก (แก้ไขกลับเป็นแบบที่ถูกต้อง)
         // -----------------------------------------------------------------
-                const className = prediction[i].className;
-                const probability = prediction[i].probability;
-
-                if (
-                    (className === "Class 1" || className === "Class 2") && // 👈 แก้ตรงนี้
-                    probability > CONFIDENCE_THRESHOLD &&
-                    !isSending
-                ) {
-                    isSending = true; 
-                    sendDataToSheet(className); // ส่งชื่อ Class ที่เจอ
-                }
+        const TARGET_CLASS = "Class 1"; // 👈 เปลี่ยนเป็นชื่อ Class ที่คุณต้องการให้บันทึก
+        const CONFIDENCE_THRESHOLD = 0.95; // 👈 ความมั่นใจที่ต้องการ (เช่น 0.95 = 95%)
+        const SEND_DELAY = 5000; // 👈 หน่วงเวลา 5 วินาที (5000ms)
         // -----------------------------------------------------------------
 
         let model, webcam, labelContainer, maxPredictions;
@@ -86,6 +78,7 @@
                 labelContainer.childNodes[i].innerHTML = classPrediction;
 
                 // === ส่วนสำคัญ: ตรวจสอบและส่งข้อมูล ===
+                // (นี่คือโค้ดที่ถูกต้อง ซึ่งใช้ตัวแปรจากส่วนที่ 3)
                 if (
                     prediction[i].className === TARGET_CLASS &&
                     prediction[i].probability > CONFIDENCE_THRESHOLD &&
@@ -101,7 +94,7 @@
         // === ฟังก์ชันใหม่: ส่งข้อมูลไป Google Sheet ===
         async function sendDataToSheet(predictionResult) {
             console.log("Sending data to Google Sheet:", predictionResult);
-
+            
             try {
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
@@ -110,9 +103,9 @@
                         'Content-Type': 'application/json'
                     }
                 });
-
+                
                 const result = await response.json();
-
+                
                 if (result.result === "success") {
                     console.log("Data sent successfully!");
                 } else {
